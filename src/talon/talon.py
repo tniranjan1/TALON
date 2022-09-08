@@ -103,6 +103,8 @@ def get_args():
         type = float, default = 0.8)
     parser.add_argument("--o", dest = "outprefix", help = "Prefix for output files",
         type = str)
+    parser.add_argument("--tmp", dest = "tmp_prefix", help = "Prefix for tmp folder",
+        type = str)
 
     args = parser.parse_args()
     return args
@@ -1427,7 +1429,7 @@ def check_inputs(options):
                 else:
                     dataset_metadata.append(metadata)
                     curr_datasets.append(dataname)
-                    if not curr_sam.endswith(".sam"):
+                    if not curr_sam.endswith(".sorted.bam"):
                         raise ValueError('Last field in config file must be a .sam file')
                     sam_files.append(curr_sam)      
     if sam_files == []:
@@ -2413,7 +2415,7 @@ def main():
 
     # Initialize worker pool
     with mp.Pool(processes=threads) as pool:
-        run_info = init_run_info(database, build, min_coverage, min_identity)
+        run_info = init_run_info(database, build, min_coverage, min_identity, tmp_prefix)
         run_info.outfiles = init_outfiles(options.outprefix)
 
         # Create annotation entry for each dataset
@@ -2425,7 +2427,7 @@ def main():
             dataset_db_entries.append((d_id, d_name, description, platform))
 
         # Partition the reads
-        read_groups, intervals, header_file = procsams.partition_reads(sam_files, datasets)
+        read_groups, intervals, header_file = procsams.partition_reads(sam_files, datasets, n_threads=threads)
         read_files = procsams.write_reads_to_file(read_groups, intervals, header_file)
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
