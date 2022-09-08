@@ -2409,6 +2409,7 @@ def main():
     min_coverage = float(options.min_coverage)
     min_identity = float(options.min_identity)
     outprefix = options.outprefix
+    tmp_prefix = options.tmp_prefix
 
     # Set globally accessible counters
     get_counters(database)
@@ -2416,7 +2417,7 @@ def main():
     # Initialize worker pool
     with mp.Pool(processes=threads) as pool:
         run_info = init_run_info(database, build, min_coverage, min_identity, tmp_prefix)
-        run_info.outfiles = init_outfiles(options.outprefix)
+        run_info.outfiles = init_outfiles(options.outprefix, tmp_prefix)
 
         # Create annotation entry for each dataset
         datasets = []
