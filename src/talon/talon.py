@@ -1,7 +1,7 @@
 # TALON: Techonology-Agnostic Long Read Analysis Pipeline
 # Author: Dana Wyman
 # -----------------------------------------------------------------------------
-# This program takes transcripts from one or more samples (SAM format) and
+# This program takes transcripts from one or more samples (BAM format) and
 # assigns them transcript and gene identifiers based on a GTF annotation.
 # Novel transcripts are assigned new identifiers.
 import argparse
@@ -80,14 +80,14 @@ def get_args():
     """ Fetches the arguments for the program """
 
     program_desc = """TALON takes transcripts from one or more long read
-                      datasets (SAM format) and assigns them transcript and gene 
+                      datasets (BAM format) and assigns them transcript and gene 
                       identifiers based on a database-bound annotation. 
                       Novel events are assigned new identifiers."""
     parser = argparse.ArgumentParser(description=program_desc)
 
     parser.add_argument("--f", dest = "config_file",
         help = "Dataset config file: dataset name, sample description, " + \
-               "platform, sam file (comma-delimited)", type = str)
+               "platform, bam file (comma-delimited)", type = str)
     parser.add_argument('--db', dest = 'database', metavar='FILE,', type = str,
         help='TALON database. Created using talon_initialize_database')
     parser.add_argument('--build', dest = 'build', metavar='STRING,', type = str,
@@ -1394,7 +1394,7 @@ def check_inputs(options):
 
         # Make sure that each input dataset is not already in the database, and
         # also make sure that each dataset name is unique
-        sam_files = []
+        bam_files = []
         dataset_metadata = []
         curr_datasets = []
 
@@ -1404,16 +1404,16 @@ def check_inputs(options):
         with open(options.config_file, 'r') as f:
             for line in f:
                 line = line.strip().split(',')
-                curr_sam = line[3]
+                curr_bam = line[3]
                 if len(line) != 4:
                     raise ValueError('Incorrect number of comma-separated fields'+ \
                                      ' in config file. There should be four: ' + \
                                      '(dataset name, sample description, ' + \
-                                     'platform, associated sam file).')
+                                     'platform, associated sorted bam file).')
 
-                # Make sure that the sam file exists
-                if not Path(curr_sam).exists():
-                    raise ValueError("SAM file '%s' does not exist!" % curr_sam)
+                # Make sure that the sorted bam file exists
+                if not Path(curr_bam).exists():
+                    raise ValueError("BAM file '%s' does not exist!" % curr_bam)
 
                 metadata = (line[0], line[1], line[2])
                 dataname = metadata[0]
@@ -1423,19 +1423,19 @@ def check_inputs(options):
                 elif dataname in curr_datasets:
                     warnings.warn("Skipping duplicated instance of dataset '" + \
                                    dataname + "'.")
-                elif curr_sam in sam_files:
-                    warnings.warn("Skipping duplicated instance of sam file '" + \
-                                   curr_sam  + "'.")
+                elif curr_bam in bam_files:
+                    warnings.warn("Skipping duplicated instance of bam file '" + \
+                                   curr_bam  + "'.")
                 else:
                     dataset_metadata.append(metadata)
                     curr_datasets.append(dataname)
-                    if not curr_sam.endswith(".sorted.bam"):
-                        raise ValueError('Last field in config file must be a .sam file')
-                    sam_files.append(curr_sam)      
-    if sam_files == []:
+                    if not curr_bam.endswith(".sorted.bam"):
+                        raise ValueError('Last field in config file must be a .sorted.bam file')
+                    bam_files.append(curr_bam)      
+    if bam_files == []:
         raise RuntimeError(("All of the provided dataset names are already in "
                             "the database. Please check your config file."))
-    return sam_files, dataset_metadata
+    return bam_files, dataset_metadata
 
 
 def init_run_info(database, genome_build, min_coverage = 0.9, min_identity = 0,
@@ -2124,8 +2124,8 @@ def parallel_talon(read_file, interval, database, run_info, queue):
          
         interval_id = "%s_%d_%d" % interval
 
-        with pysam.AlignmentFile(read_file, "rb") as sam:
-            for record in sam:  # type: pysam.AlignedSegment
+        with pysam.AlignmentFile(read_file, "rb") as bam:
+            for record in bam:  # type: pysam.AlignedSegment
                 # Check whether we should try annotating this read or not
                 qc_metrics = tutils.check_read_quality(record, run_info)
 
@@ -2399,7 +2399,7 @@ def main():
     print("[ %s ] Started TALON run" % (ts))
 
     options = get_args()
-    sam_files, dset_metadata = check_inputs(options)
+    bam_files, dset_metadata = check_inputs(options)
     threads = int(options.threads)
     if threads < 2: threads = 2 # Value of 1 will not work
  
@@ -2427,7 +2427,7 @@ def main():
             dataset_db_entries.append((d_id, d_name, description, platform))
 
         # Partition the reads
-        read_groups, intervals, header_file = procsams.partition_reads(sam_files, datasets, n_threads=threads)
+        read_groups, intervals, header_file = procsams.partition_reads(bam_files, datasets, tmp_prefix, threads)
         read_files = procsams.write_reads_to_file(read_groups, intervals, header_file)
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
