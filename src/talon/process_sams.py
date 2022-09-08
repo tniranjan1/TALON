@@ -76,7 +76,18 @@ def partition_reads(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
                                 n_threads = n_threads)
 
     try:
-        all_reads = pybedtools.BedTool(merged_bam).bam_to_bed()
+        com_1 = "samtools view -H %s" % merged_bam
+        com_2 = "grep '@SQ'"
+        com_3 = "grep -vP '_|chrEBV|chrM'"
+        com_4 = "cut -f2,3"
+        com_5 = "sed 's@:@\t@g'"
+        com_6 = "cut -f2,4"
+        com_7 = "sed 's@\t@\t1\t@'"
+        command = [ com_1, com_2, com_3, com_4, com_5, com_6, com_7 ]
+        command = " | ".join(command)
+        command = command + " > " + merged_bam + ".bed"
+        os.system(command)
+        all_reads = pybedtools.BedTool(merged_bam + ".bed")
     except Exception as e:
         print(e)
         raise RuntimeError("Problem opening bam file %s" % (merged_bam))
