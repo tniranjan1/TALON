@@ -1453,7 +1453,7 @@ def init_run_info(database, genome_build, min_coverage = 0.9, min_identity = 0,
         run_info.min_coverage = min_coverage
         run_info.min_identity = min_identity
         run_info.tmp_dir = tmp_dir
-        os.system("mkdir -p %s " % (tmp_dir)) 
+        ###/###os.system("mkdir -p %s " % (tmp_dir)) 
 
         # Fetch information from run_info table
         cursor.execute("""SELECT * FROM run_info""")
@@ -1476,9 +1476,9 @@ def init_outfiles(outprefix, tmp_dir = "talon_tmp/"):
         write to via the queue. """
 
     # If there is a tmp dir there already, remove it
-    if os.path.exists(tmp_dir):
-        os.system("rm -r %s" % tmp_dir)
-    os.system("mkdir -p %s" % tmp_dir)
+    ###/###if os.path.exists(tmp_dir):
+    ###/###    os.system("rm -r %s" % tmp_dir)
+    ###/###os.system("mkdir -p %s" % tmp_dir)
  
     if not tmp_dir.endswith("/"):
         tmp_dir = tmp_dir + "/"
@@ -1504,9 +1504,9 @@ def init_outfiles(outprefix, tmp_dir = "talon_tmp/"):
     outfiles.transcript_annot = tmp_dir + "transcript_annot_tuples.tsv"
     outfiles.exon_annot = tmp_dir + "exon_annot_tuples.tsv"
  
-    for fname in outfiles:
-        # Replace with handle to open file
-        open(outfiles[fname], 'w').close()
+    ###/###for fname in outfiles:
+    ###/###    # Replace with handle to open file
+    ###/###    open(outfiles[fname], 'w').close()
  
     return outfiles
 
@@ -2418,7 +2418,8 @@ def main():
     get_counters(database)
 
     # Initialize worker pool
-    with mp.Pool(processes=threads) as pool:
+    ###/###with mp.Pool(processes=threads) as pool:
+    if True: ###/###
         run_info = init_run_info(database, build, min_coverage, min_identity, tmp_prefix)
         run_info.outfiles = init_outfiles(options.outprefix, tmp_prefix)
 
@@ -2431,36 +2432,36 @@ def main():
             dataset_db_entries.append((d_id, d_name, description, platform))
 
         # Partition the reads
-        read_groups, intervals, header_file = procsams.partition_reads(bam_files, datasets, tmp_prefix, threads)
-        read_files = procsams.write_reads_to_file(read_groups, intervals, header_file, tmp_prefix, threads)
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
+        ###/###read_groups, intervals, header_file = procsams.partition_reads(bam_files, datasets, tmp_prefix, threads)
+        ###/###read_files = procsams.write_reads_to_file(read_groups, intervals, header_file, tmp_prefix, threads)
+        ###/###ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        ###/###print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
 
         # Set up a queue specifically for writing to outfiles
-        manager = mp.Manager()
-        queue = manager.Queue()
+        ###/###manager = mp.Manager()
+        ###/###queue = manager.Queue()
 
         # Create job tuples to submit
-        jobs = []
-        for read_file, interval in zip(read_files, intervals):
-            jobs.append((read_file, interval, database, run_info, queue))
+        ###/###jobs = []
+        ###/###for read_file, interval in zip(read_files, intervals):
+        ###/###    jobs.append((read_file, interval, database, run_info, queue))
 
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        print("[ %s ] Launching parallel annotation jobs" % (ts))
+        ###/###ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        ###/###print("[ %s ] Launching parallel annotation jobs" % (ts))
 
         # Start running listener, which will monitor queue for messages
-        QC_header = make_QC_header(run_info.min_coverage, run_info.min_identity, 
-                                   run_info.min_length)
-        pool.apply_async(listener, (queue, run_info.outfiles, QC_header)) 
+        ###/###QC_header = make_QC_header(run_info.min_coverage, run_info.min_identity, 
+        ###/###                           run_info.min_length)
+        ###/###pool.apply_async(listener, (queue, run_info.outfiles, QC_header)) 
 
         # Now launch the parallel TALON jobs
-        pool.starmap(parallel_talon, jobs)
+        ###/###pool.starmap(parallel_talon, jobs)
 
         # Now we are done, kill the listener
-        msg_done = (None, 'complete')
-        queue.put(msg_done)
-        pool.close()
-        pool.join()
+        ###/###msg_done = (None, 'complete')
+        ###/###queue.put(msg_done)
+        ###/###pool.close()
+        ###/###pool.join()
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] All jobs complete. Starting database update." % (ts))
