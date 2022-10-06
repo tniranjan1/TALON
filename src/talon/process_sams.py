@@ -9,6 +9,7 @@ import pysam
 import os
 import time
 import sys
+import multiprocessing as mp
 
 def convert_to_bam(sam, bam, n_threads=1):
     """ Convert provided sam file to bam file (provided name).  """
@@ -63,6 +64,18 @@ def preprocess_sam(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
                             "files have headers."))
     return merged_bam
 
+def discontinuous_intervals(merged_bam, chrom):
+    """ Get discontinuous bed intervals for smaller partitions """
+    com_1 = "samtools view -h %s %s" % (merged_bam, chrom)
+    com_2 = "bedtools bamtobed -i -"
+    com_3 = "cut -f1-3"
+    com_4 = "bedtools merge -i -"
+    command = [ com_1, com_2, com_3, com_4 ]
+    out = "%s.%s.bed" % (merged_bam, chrom)
+    command = " | ".join(command) + " > %s" % out
+    os.system(command)
+    return pybedtools.BedTool(out)
+
 def partition_reads(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
     """ Use bedtools merge to create non-overlapping intervals from all of the
         transcripts in a series of SAM/BAM files. Then, iterate over the intervals
@@ -86,17 +99,25 @@ def partition_reads(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
         com_6 = "cut -f2,4"
         com_7 = "sed 's@\t@\t1\t@'"
         command = [ com_1, com_2, com_3, com_4, com_5, com_6, com_7 ]
-        command = " | ".join(command)
-        command = command + " > " + merged_bam + ".bed"
+        command = " | ".join(command) + " > %s.bed" % merged_bam
         os.system(command)
-        all_reads = pybedtools.BedTool(merged_bam + ".bed")
+        all_reads = pybedtools.BedTool(merged_bam + ".bed").to_dataframe()
+        chroms = [ ( merged_bam, all_reads.iloc[a][0] ) for a in range(len(all_reads)) ]
+        with mp.Pool(processes=threads) as pool:
+            discont_reads = pool.starmap(discontinuous_intervals, chroms)
+            pool.terminate()
+        all_reads = discont_reads[0]
+        for i in range(1, len(discont_reads)):
+            all_reads = all_reads.cat(discont_reads[i], postmerge=False)
+        for f in [ "%s.%s.bed" % (merged_bam, c[1]) for c in chroms ]:
+            os.remove(f)
+        all_reads.saveas("%s.chr.bed" % merged_bam)
     except Exception as e:
         print(e)
         raise RuntimeError("Problem opening bam file %s" % (merged_bam))
 
-    # Must sort the Bedtool object
-    sorted_reads = all_reads.sort()
-    intervals = sorted_reads.merge(d = 100000000)
+    # The Bedtool object is already sorted
+    intervals = all_reads
 
     # Now open each bam file using pysam and extract the reads
     coords = []
@@ -106,7 +127,7 @@ def partition_reads(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
             reads = get_reads_in_interval(bam, interval.chrom,
                                           interval.start, interval.end)
             read_groups.append(reads)
-            coords.append((interval.chrom, interval.start + 1, interval.end))
+            coords.append((interval.chrom, interval.start, interval.end))
 
     return read_groups, coords, merged_bam
 
