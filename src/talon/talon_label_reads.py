@@ -14,6 +14,7 @@ import time
 import os
 import glob
 from optparse import OptionParser
+import sys
 
 def get_options():
     """ Read input args """
@@ -136,6 +137,7 @@ def split_reads_by_chrom(sam_file, tmp_dir = "tmp_label_reads", n_threads = 1):
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Splitting SAM by chromosome..." % (ts))
+    sys.stdout.flush()
 
     tmp_dir = tmp_dir + "/raw"
     os.system("mkdir -p %s" %(tmp_dir))
@@ -144,6 +146,7 @@ def split_reads_by_chrom(sam_file, tmp_dir = "tmp_label_reads", n_threads = 1):
         # Convert to bam
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] -----Converting to bam...." % (ts))
+        sys.stdout.flush()
         bam_file = tmp_dir + "/all_reads.bam"
         pysam.view("-b", "-S", "-@", str(n_threads), "-o", bam_file, sam_file, 
                    catch_stdout=False)
@@ -156,6 +159,7 @@ def split_reads_by_chrom(sam_file, tmp_dir = "tmp_label_reads", n_threads = 1):
     if not os.path.isfile(bam_file + ".bai"):
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] -----Sorting and indexing..." % (ts))
+        sys.stdout.flush()
         sorted_bam = tmp_dir + "/all_reads.sorted.bam"
         pysam.sort("-@", str(n_threads), "-o", sorted_bam, bam_file)
         bam_file = sorted_bam
@@ -167,6 +171,7 @@ def split_reads_by_chrom(sam_file, tmp_dir = "tmp_label_reads", n_threads = 1):
     read_files = []
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] -----Writing chrom files..." % (ts))
+    sys.stdout.flush()
     with pysam.AlignmentFile(bam_file, "rb") as bam:
         # Iterate over chromosomes and write a reads file for each
         chromosomes = [ x.contig for x in bam.get_index_statistics() \
@@ -264,6 +269,7 @@ def main(options=None):
         # Print start message
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Started talon_label_reads run." % (ts))
+        sys.stdout.flush()
 
         # Remove tmp dir if it exists
         if os.path.exists(options.tmp_dir):
@@ -276,6 +282,7 @@ def main(options=None):
         # Now launch the parallel TALON read label jobs
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Launching parallel jobs..." % (ts))
+        sys.stdout.flush()
         jobs = [(sam, options) for sam in read_files]
         pool.starmap(run_chrom_thread, jobs)
 
@@ -285,6 +292,7 @@ def main(options=None):
     # Pool together output files
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Pooling output files..." % (ts))
+    sys.stdout.flush()
     pool_outputs(options.tmp_dir + "/labeled", options.outprefix)
 
     # Delete tmp_dir if desired
@@ -293,6 +301,7 @@ def main(options=None):
  
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Run complete" % (ts))
+    sys.stdout.flush()
 
 if __name__ == '__main__':
     options = get_options()
