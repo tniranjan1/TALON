@@ -40,6 +40,14 @@ class Counter(object):
         with self.lock:
             return self.val.value
 
+def basic_time():
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+bt = basic_time
+
+def print_log(message):
+    print(message)
+    sys.stdout.flush()
+    
 def get_counters(database):
     """ Fetch counter values from the database and create counter objects 
         that will be accessible to all of the threads during the parallel run
@@ -1767,19 +1775,41 @@ def update_database(database, batch_size, outfiles, datasets):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    print_log("[ %s ] Adding genes to database." % bt())
     batch_add_genes(cursor, outfiles.genes, batch_size)
+    
+    print_log("[ %s ] Adding transcripts to database." % bt())
     batch_add_transcripts(cursor, outfiles.transcripts, batch_size) 
+    
+    print_log("[ %s ] Adding edges to database." % bt())
     batch_add_edges(cursor, outfiles.edges, batch_size)
+    
+    print_log("[ %s ] Adding locations to database." % bt())
     batch_add_locations(cursor, outfiles.location, batch_size)
+    
+    print_log("[ %s ] Adding vertices to database." % bt())
     batch_add_vertex2gene(cursor, outfiles.v2g, batch_size)
+    
+    print_log("[ %s ] Adding datasets." % bt())
     add_datasets(cursor, datasets)  
+    
+    print_log("[ %s ] Adding observations to database." % bt())
     batch_add_observed(cursor, outfiles.observed, batch_size)
+    
+    print_log("[ %s ] Updating counter." % bt())
     update_counter(cursor)
+    
+    print_log("[ %s ] Adding gene annotations to database." % bt())
     batch_add_annotations(cursor, outfiles.gene_annot, "gene", batch_size)
+    
+    print_log("[ %s ] Adding transcript annotations to database." % bt())
     batch_add_annotations(cursor, outfiles.transcript_annot, "transcript",
                           batch_size)
+    
+    print_log("[ %s ] Adding exon annotations to database." % bt())
     batch_add_annotations(cursor, outfiles.exon_annot, "exon", batch_size)
 
+    print_log("[ %s ] Checking database integrity." % bt())
     check_database_integrity(cursor)
     conn.commit()
     conn.close()
@@ -2064,9 +2094,7 @@ def batch_add_abundance(cursor, entries, batch_size):
 def check_database_integrity(cursor):
     """ Perform some checks on the database. Run before committing changes"""
 
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] Validating database........" % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] Validating database........" % bt())
 
     # For each category, check that the number of table entries matches the counter
     counter_query = "SELECT * FROM counters"
@@ -2109,10 +2137,8 @@ def parallel_talon(read_file, interval, database, run_info, queue):
         added to the database, OR alternately, pickle them and write to file
         where they can be accessed later. """
 
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] Annotating reads in interval %s:%d-%d..." % \
-          (ts, interval[0], interval[1], interval[2]))
-    sys.stdout.flush()
+    print_log("[ %s ] Annotating reads in interval %s:%d-%d..." % \
+              (bt(), interval[0], interval[1], interval[2]))
 
     with sqlite3.connect(database) as conn:
         conn.row_factory = sqlite3.Row
@@ -2373,9 +2399,7 @@ def listener(queue, outfiles, QC_header, timeout = 72):
         msg_fname = msg[0]
         msg_value = msg[1]
         if datetime.now() > wait_until or msg_value == 'complete':
-            ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            print("[ %s ] Shutting down message queue..." % (ts))
-            sys.stdout.flush()
+            print_log("[ %s ] Shutting down message queue..." % bt())
             for f in open_files.values():
                 f.close()
             break
@@ -2399,9 +2423,7 @@ def make_QC_header(coverage, identity, length):
 
 def main():
     """ Runs program """
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] Started TALON run" % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] Started TALON run" % bt())
 
     options = get_args()
     bam_files, dset_metadata = check_inputs(options)
@@ -2438,9 +2460,7 @@ def main():
         # Partition the reads
         read_groups, intervals, header_file = procsams.partition_reads(bam_files, datasets, tmp_prefix, threads)
         read_files = procsams.write_reads_to_file(read_groups, intervals, header_file, tmp_prefix, threads)
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
-        sys.stdout.flush()
+        print_log("[ %s ] Split reads into %d intervals" % (bt(), len(read_groups)))
 
         # Set up a queue specifically for writing to outfiles
         manager = mp.Manager()
@@ -2451,9 +2471,7 @@ def main():
         for read_file, interval in zip(read_files, intervals):
             jobs.append((read_file, interval, database, run_info, queue))
 
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-        print("[ %s ] Launching parallel annotation jobs" % (ts))
-        sys.stdout.flush()
+        print_log("[ %s ] Launching parallel annotation jobs" % bt())
 
         # Start running listener, which will monitor queue for messages
         QC_header = make_QC_header(run_info.min_coverage, run_info.min_identity, 
@@ -2469,21 +2487,15 @@ def main():
         pool.close()
         pool.join()
 
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] All jobs complete. Starting database update." % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] All jobs complete. Starting database update." % bt())
 
     # Update the database
     batch_size = 10000
     update_database(database, batch_size, run_info.outfiles, dataset_db_entries)
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] Database update complete." % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] Database update complete." % bt())
 
     # Write output reads file
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] Creating read-wise annotation file." % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] Creating read-wise annotation file." % bt())
     get_read_annotations.make_read_annot_file(database, build,  
                                               outprefix, datasets = datasets)
 
@@ -2492,9 +2504,7 @@ def main():
     #print("Transcripts: %d" % transcript_counter.value())
     #print("Observed: %d" % observed_counter.value())
 
-    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-    print("[ %s ] DONE" % (ts))
-    sys.stdout.flush()
+    print_log("[ %s ] DONE" % bt())
 
 if __name__ == '__main__':
     main()
