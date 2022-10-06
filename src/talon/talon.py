@@ -2066,6 +2066,7 @@ def check_database_integrity(cursor):
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Validating database........" % (ts))
+    sys.stdout.flush()
 
     # For each category, check that the number of table entries matches the counter
     counter_query = "SELECT * FROM counters"
@@ -2091,6 +2092,7 @@ def check_database_integrity(cursor):
                   " Discarding changes to database and exiting...")
             print("table_count: "  + str(actual_count))
             print("counter_value: " + str(curr_counter))
+            sys.stdout.flush()
 
     if fail == 1:
         raise RuntimeError("Discrepancy found in database. " + \
@@ -2110,6 +2112,7 @@ def parallel_talon(read_file, interval, database, run_info, queue):
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Annotating reads in interval %s:%d-%d..." % \
           (ts, interval[0], interval[1], interval[2]))
+    sys.stdout.flush()
 
     with sqlite3.connect(database) as conn:
         conn.row_factory = sqlite3.Row
@@ -2372,6 +2375,7 @@ def listener(queue, outfiles, QC_header, timeout = 72):
         if datetime.now() > wait_until or msg_value == 'complete':
             ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             print("[ %s ] Shutting down message queue..." % (ts))
+            sys.stdout.flush()
             for f in open_files.values():
                 f.close()
             break
@@ -2397,6 +2401,7 @@ def main():
     """ Runs program """
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Started TALON run" % (ts))
+    sys.stdout.flush()
 
     options = get_args()
     bam_files, dset_metadata = check_inputs(options)
@@ -2435,6 +2440,7 @@ def main():
         read_files = procsams.write_reads_to_file(read_groups, intervals, header_file, tmp_prefix, threads)
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Split reads into %d intervals" % (ts, len(read_groups)))
+        sys.stdout.flush()
 
         # Set up a queue specifically for writing to outfiles
         manager = mp.Manager()
@@ -2447,6 +2453,7 @@ def main():
 
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Launching parallel annotation jobs" % (ts))
+        sys.stdout.flush()
 
         # Start running listener, which will monitor queue for messages
         QC_header = make_QC_header(run_info.min_coverage, run_info.min_identity, 
@@ -2464,16 +2471,19 @@ def main():
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] All jobs complete. Starting database update." % (ts))
+    sys.stdout.flush()
 
     # Update the database
     batch_size = 10000
     update_database(database, batch_size, run_info.outfiles, dataset_db_entries)
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Database update complete." % (ts))
+    sys.stdout.flush()
 
     # Write output reads file
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] Creating read-wise annotation file." % (ts))
+    sys.stdout.flush()
     get_read_annotations.make_read_annot_file(database, build,  
                                               outprefix, datasets = datasets)
 
@@ -2484,6 +2494,7 @@ def main():
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     print("[ %s ] DONE" % (ts))
+    sys.stdout.flush()
 
 if __name__ == '__main__':
     main()
