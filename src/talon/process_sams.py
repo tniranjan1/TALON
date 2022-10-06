@@ -103,7 +103,7 @@ def partition_reads(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
         os.system(command)
         all_reads = pybedtools.BedTool(merged_bam + ".bed").to_dataframe()
         chroms = [ ( merged_bam, all_reads.iloc[a][0] ) for a in range(len(all_reads)) ]
-        with mp.Pool(processes=threads) as pool:
+        with mp.Pool(processes=n_threads) as pool:
             discont_reads = pool.starmap(discontinuous_intervals, chroms)
             pool.terminate()
         all_reads = discont_reads[0]
