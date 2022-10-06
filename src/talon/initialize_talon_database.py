@@ -14,6 +14,7 @@ from . import transcript as Transcript
 from . import edge as Edge
 import os
 import time
+import sys
 
 def getOptions():
     parser = OptionParser()
@@ -601,6 +602,7 @@ def populate_db(database, annot_name, chrom_genes, chrom_transcripts, edges, gen
         conn.commit()
         end_time = time.time()
         print("It took {} to process chromosome".format(hms_string(end_time - start_time)))
+        sys.stdout.flush()
     conn.close()
     
     return
@@ -636,8 +638,10 @@ def add_genes(c, genes, annot_name):
             bulk_annotations.append((db_gene_id, annot_name, source, att, value))
 
     print("bulk update genes...")
+    sys.stdout.flush()
     bulk_update_genes(c, bulk_genes, gene_counter)
     print("bulk update gene_annotations...")
+    sys.stdout.flush()
     bulk_update_gene_annotations(c, bulk_annotations)
     return gene_id_map
  
@@ -726,12 +730,16 @@ def add_transcripts(c, transcripts, annot_name, gene_id_map, genome_build):
             bulk_annotations.append((db_transcript_id, annot_name, source, att, value))
  
     print("bulk update transcripts...")
+    sys.stdout.flush()
     bulk_update_transcripts(c, bulk_transcripts, counter)
     print("bulk update annotations...")
+    sys.stdout.flush()
     bulk_update_transcript_annotations(c, bulk_annotations)
     print("bulk update vertices/locations...")
+    sys.stdout.flush()
     bulk_update_vertices(c, vertices)
     print("bulk update edges...")
+    sys.stdout.flush()
     bulk_update_edges(c, edges)
 
     return
