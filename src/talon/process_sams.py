@@ -8,6 +8,7 @@ import pybedtools
 import pysam
 import os
 import time
+import sys
 
 def convert_to_bam(sam, bam, n_threads=1):
     """ Convert provided sam file to bam file (provided name).  """
@@ -55,6 +56,7 @@ def preprocess_sam(bam_files, datasets, tmp_dir = "talon_tmp/", n_threads = 0):
         pysam.index(merged_bam, "-@ " + str(n_threads))
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         print("[ %s ] Merged input SAM/BAM files" % (ts))
+        sys.stdout.flush()
     except:
         raise RuntimeError(("Problem merging and indexing SAM/BAM files. "
                             "Check your file paths and make sure that all "
