@@ -2377,7 +2377,7 @@ def unpack_observed(annotation_info, queue, obs_file):
 
     return
 
-def listener(queue, outfiles, QC_header, timeout = 72):
+def listener(queue, outfiles, QC_header, timeout = 720):
     """ During the run, this function listens for messages on the provided
         queue. When a message is received (consisting of a filename and a 
         string), it writes the string to that file. Timeout unit is in hours"""
