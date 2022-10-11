@@ -2137,7 +2137,7 @@ def parallel_talon(read_file, interval, database, run_info, queue):
         added to the database, OR alternately, pickle them and write to file
         where they can be accessed later. """
 
-    print_log("[ %s ] Annotating reads in interval %s:%d-%d..." % \
+    print_log("[ %s ] Started annotating reads in interval %s:%d-%d..." % \
               (bt(), interval[0], interval[1], interval[2]))
 
     with sqlite3.connect(database) as conn:
@@ -2235,7 +2235,10 @@ def parallel_talon(read_file, interval, database, run_info, queue):
             queue.put(msg)
 
     struct_collection = None
- 
+    
+    print_log("[ %s ] Finished annotating reads in interval %s:%d-%d..." % \
+              (bt(), interval[0], interval[1], interval[2]))
+    
     return
 
 def parse_custom_SAM_tags(sam_record: pysam.AlignedSegment):
